@@ -25,12 +25,12 @@ try:
 except:
     import pdb as ipdb
     
-from flexgen.compression import CompressionConfig
-from flexgen.opt_config import OptConfig, get_opt_config, download_opt_weights
-from flexgen.pytorch_backend import (TorchDevice, TorchDisk, TorchLink,
+from flexgen_kj.compression import CompressionConfig
+from flexgen_kj.opt_config import OptConfig, get_opt_config, download_opt_weights
+from flexgen_kj.pytorch_backend import (TorchDevice, TorchDisk, TorchLink,
     TorchMixedDevice, DeviceType, general_copy, fix_recursive_import)
-from flexgen.timer import timers
-from flexgen.utils import (Task, ExecutionEnv, GB, T, ValueHolder,
+from flexgen_kj.timer import timers
+from flexgen_kj.utils import (Task, ExecutionEnv, GB, T, ValueHolder,
     array_1d, array_2d, array_3d, str2bool, project_decode_latency,
     torch_mem_stats, torch_dtype_to_np_dtype, write_benchmark_log,
     read_benchmark_log)

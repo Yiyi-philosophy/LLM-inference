@@ -6,7 +6,7 @@ python3 profile_matmul.py
 import numpy as np
 import torch
 
-from flexgen.profile_bandwidth import benchmark_func
+from flexgen_kj.profile_bandwidth import benchmark_func
 
 
 def bench_matmul():

@@ -13,10 +13,15 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-from flexgen.utils import (GB, T, cpu_mem_stats, vector_gather,
+from flexgen_kj.utils import (GB, T, cpu_mem_stats, vector_gather,
     np_dtype_to_torch_dtype, torch_dtype_to_np_dtype,
     torch_dtype_to_num_bytes)
 
+try:
+    import ipdb
+except:
+    import pdb as ipdb
+    
 general_copy_compressed = TorchCompressedDevice = None
 global_cpu_device = None
 global_disk_device = None
@@ -24,7 +29,7 @@ global_disk_device = None
 
 def fix_recursive_import():
     global general_copy_compressed, TorchCompressedDevice, global_cpu_device
-    from flexgen import compression
+    from flexgen_kj import compression
     general_copy_compressed = compression.general_copy_compressed
     TorchCompressedDevice = compression.TorchCompressedDevice
 
@@ -242,6 +247,7 @@ class TorchDevice:
             w_token = w_token.device.decompress(w_token)
             w_pos = w_pos.device.decompress(w_pos)
 
+        ipdb.set_trace() # $$ break
         token_ids = inputs.data
         mask = attention_mask.data
         if donate[0]: inputs.delete()
