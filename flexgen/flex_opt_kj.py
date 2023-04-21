@@ -203,6 +203,7 @@ class InputEmbed:
         else:
             (w_token, _), (w_pos, _) = weight_read_buf.val
 
+        # ERROR
         h = self.compute.opt_input_embed(h, mask,
             w_token, w_pos, self.config.pad_token_id, donate)
         hidden.val = h
@@ -799,8 +800,11 @@ class OptLM:
         # Clear the weight_read_buf if it is the last gpu batch
         # Clear the cache_read_buf
         # Run layer computation
-        self.layers[j].forward(self.hidden[i][j][k], self.cache_read_buf[j][k],
-            self.weight_read_buf[j], self.attention_mask[k],
+        self.layers[j].forward(
+            self.hidden[i][j][k], 
+            self.cache_read_buf[j][k],
+            self.weight_read_buf[j], 
+            self.attention_mask[k],
             self.cache_write_buf[j][k], i, k)
 
     def sync(self):
@@ -1067,18 +1071,18 @@ class OptLM:
             timers("generate").start()
             for k in range(self.num_gpu_batches):
                 self.update_attention_mask(i, k)
-            for j in range(self.num_layers):
-                for k in range(self.num_gpu_batches):
+            for k in range(self.num_gpu_batches):
+                for j in range(self.num_layers):
                     print("i,j,k=",i,j,k)
-                    self.load_weight(i, j+1, k)
+                    self.load_weight    (i, j, k-1)
                     
-                    self.load_cache(i, j, k+1)
-                    self.store_hidden(i, j, k-1)
+                    self.load_cache     (i, j+1, k)
+                    self.store_hidden   (i, j-1, k)
                     
-                    self.load_hidden(i, j, k+1)
-                    self.compute_layer(i, j, k)
+                    self.load_hidden    (i, j+1, k)
+                    self.compute_layer  (i, j, k)
                     
-                    self.store_cache(i, j, k-1)
+                    self.store_cache    (i, j-1, k)
                     self.sync()
             timers("generate").stop()
 

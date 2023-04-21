@@ -16,12 +16,7 @@ import numpy as np
 from flexgen.utils import (GB, T, cpu_mem_stats, vector_gather,
     np_dtype_to_torch_dtype, torch_dtype_to_np_dtype,
     torch_dtype_to_num_bytes)
-try:
-    import ipdb
-except:
-    import pdb as ipdb
-    
-    
+
 general_copy_compressed = TorchCompressedDevice = None
 global_cpu_device = None
 global_disk_device = None
@@ -246,9 +241,8 @@ class TorchDevice:
         if w_token.device.device_type == DeviceType.COMPRESSED:
             w_token = w_token.device.decompress(w_token)
             w_pos = w_pos.device.decompress(w_pos)
-            
-        # ipdb.set_trace() # $$ break
-        token_ids = inputs.data #$ ERROR 
+
+        token_ids = inputs.data
         mask = attention_mask.data
         if donate[0]: inputs.delete()
         if donate[1]: attention_mask.delete()

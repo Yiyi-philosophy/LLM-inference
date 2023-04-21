@@ -20,6 +20,11 @@ torch.cuda.memory._record_memory_history(True)
 from pprint import  pprint
 from pickle import dump
 
+try:
+    import ipdb
+except:
+    import pdb as ipdb
+    
 from flexgen.compression import CompressionConfig
 from flexgen.opt_config import OptConfig, get_opt_config, download_opt_weights
 from flexgen.pytorch_backend import (TorchDevice, TorchDisk, TorchLink,
@@ -202,9 +207,9 @@ class InputEmbed:
             (w_token, donate[2]), (w_pos, donate[3]) = weight_read_buf.pop()
         else:
             (w_token, _), (w_pos, _) = weight_read_buf.val
-
-        h = self.compute.opt_input_embed(h, mask,
-            w_token, w_pos, self.config.pad_token_id, donate)
+        
+        ipdb.set_trace() # $$ break
+        h = self.compute.opt_input_embed(h, mask, w_token, w_pos, self.config.pad_token_id, donate)
         hidden.val = h
 
 
@@ -799,8 +804,11 @@ class OptLM:
         # Clear the weight_read_buf if it is the last gpu batch
         # Clear the cache_read_buf
         # Run layer computation
-        self.layers[j].forward(self.hidden[i][j][k], self.cache_read_buf[j][k],
-            self.weight_read_buf[j], self.attention_mask[k],
+        self.layers[j].forward(
+            self.hidden[i][j][k], 
+            self.cache_read_buf[j][k],
+            self.weight_read_buf[j], 
+            self.attention_mask[k],
             self.cache_write_buf[j][k], i, k)
 
     def sync(self):
@@ -1067,54 +1075,25 @@ class OptLM:
             timers("generate").start()
             for k in range(self.num_gpu_batches):
                 self.update_attention_mask(i, k)
-            for j in range(self.num_layers):
-                for k in range(self.num_gpu_batches):
+            for k in range(self.num_gpu_batches):
+                for j in range(self.num_layers):
                     print("i,j,k=",i,j,k)
-                    self.load_weight(i, j+1, k)
+                    self.load_weight    (i, j, k-1)
                     
-                    self.load_cache(i, j, k+1)
-                    self.store_hidden(i, j, k-1)
+                    self.load_cache     (i, j+1, k)
+                    self.store_hidden   (i, j-1, k)
                     
-                    self.load_hidden(i, j, k+1)
-                    self.compute_layer(i, j, k)
+                    self.load_hidden    (i, j+1, k)
+                    self.compute_layer  (i, j, k)
                     
-                    self.store_cache(i, j, k-1)
+                    self.store_cache    (i, j-1, k)
                     self.sync()
             timers("generate").stop()
 
         # Epilogue
         self.store_hidden(
             self.execute_gen_len-1, self.num_layers-1, self.num_gpu_batches-1)
-        
-    # def generation_loop_overlap_multi_batch_cha(self):
-    #     # Prologue
-    #     for j in range(self.num_layers):
-    #         self.load_weight(0, j, 0)
-    #     self.load_hidden(0, 0, 0)
-    #     self.sync()
 
-    #     # Generate
-    #     print("# $Generate: i[%d], j[%d], k[%d] ", self.execute_gen_len, self.num_gpu_batches, self.num_layers )
-    #     for i in range(self.execute_gen_len):
-    #         timers("generate").start()
-    #         for j in range(self.num_layers):
-    #             self.update_attention_mask(i, k)
-    #         for k in range(self.num_gpu_batches):
-    #             for j in range(self.num_layers):
-    #                 print("i,j,k=",i,j,k)
-    #                 self.load_weight(i, j+1, k)
-    #                 self.load_cache(i, j, k+1)
-    #                 self.store_hidden(i, j, k-1)
-    #                 self.load_hidden(i, j, k+1)
-    #                 self.compute_layer(i, j, k)
-    #                 self.store_cache(i, j, k-1)
-    #                 self.sync()
-    #         timers("generate").stop()
-
-    #     # Epilogue
-    #     self.store_hidden(
-    #         self.execute_gen_len-1, self.num_layers-1, self.num_gpu_batches-1)
-        
 
     def generation_loop_debug_single_batch(self):
         execute_num_batches = 20
@@ -1170,9 +1149,11 @@ class OptLM:
             self.load_weight(0, 0, k)
         self.load_hidden(0, 0, 0)
         self.sync()
-        # $$$$$zigzag
+        
+        print("$$$$$zigzag")
         # Generate
         print("# Generate")
+        ipdb.set_trace()
         for i in range(self.execute_gen_len):
             if i == 0: timers("prefill").start()
             for k in range(self.num_gpu_batches):
@@ -1181,7 +1162,7 @@ class OptLM:
                 if i > 0: timers("decoding_gpu_batch").start()
                 for k in range(self.num_gpu_batches):
                     print("i,j,k=%d,%d,%d", i,j,k)
-                    self.load_weight    (i, j+1, k)
+                    self.load_weight    (i, j, k)
                     self.load_cache     (i, j  , k+1)
                     self.store_hidden   (i, j  , k-1)
                     self.load_hidden    (i, j  , k+1)
@@ -1236,6 +1217,9 @@ def get_test_inputs(prompt_len, num_prompts, tokenizer):
     return (input_ids[0],) * num_prompts
 
 def run_flexgen(args):
+    # debug
+    # ipdb.set_trace()
+    
     print(f"<run_flexgen>: args.model: {args.model}")
     if args.model == "facebook/galactica-30b":
         tokenizer = AutoTokenizer.from_pretrained("facebook/galactica-30b", padding_side="left")

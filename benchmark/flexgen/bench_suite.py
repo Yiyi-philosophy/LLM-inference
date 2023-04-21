@@ -14,24 +14,24 @@ class Case:
 suite_1b3_test = [
     # All GPU
     Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 100 0 100 0 --cut-gen-len 8", "All GPU"),
-    # Weight on CPU, cache on GPU
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 0 100 100 0 100 0 --cut-gen-len 8", "Weight on CPU, cache on GPU"),
-    # Weight on GPU, cache on CPU
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 100 100 0 --cut-gen-len 8 --cpu", "Weight on GPU, cache on CPU"),
-    # Weight on CPU, cache on CPU
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 0 100 0 100 100 0 --cut-gen-len 8 --cpu", "Weight on CPU, cache on CPU"),
-    # Weight on disk, cache on GPU
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 0 0 100 0 100 0 --cut-gen-len 8", "Weight on disk, cache on GPU", True),
-    # Weight on GPU, cache on disk
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 0 100 0 --cut-gen-len 8 --cpu", "Weight on GPU, cache on disk", True),
-    # Weight on CPU/GPU (50-50 split), cache on GPU
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 50 50 100 0 100 0 --cut-gen-len 8", "Weight on both CPU/GPU (50-50 split), cache on GPU"),
-    # Weight on GPU, cache on CPU/GPU (50-50 split)
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 50 50 100 0 --cut-gen-len 8 --cpu", "Weight on GPU, cache on CPU/GPU (50-50 split)"),
-    # Weight on GPU, cache on disk, sparse attention
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 0 100 0 --cut-gen-len 8 --cpu --attn-sparsity 0.1", "Weight on GPU, cache on disk, sparse attention", True),
-    # Weight on GPU, cache on disk, cache quantization
-    Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 0 100 0 --cut-gen-len 8 --compress-cache", "Weight on GPU, cache on disk, cache quantization", True),
+    # # Weight on CPU, cache on GPU
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 0 100 100 0 100 0 --cut-gen-len 8", "Weight on CPU, cache on GPU"),
+    # # Weight on GPU, cache on CPU
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 100 100 0 --cut-gen-len 8 --cpu", "Weight on GPU, cache on CPU"),
+    # # Weight on CPU, cache on CPU
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 0 100 0 100 100 0 --cut-gen-len 8 --cpu", "Weight on CPU, cache on CPU"),
+    # # Weight on disk, cache on GPU
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 0 0 100 0 100 0 --cut-gen-len 8", "Weight on disk, cache on GPU", True),
+    # # Weight on GPU, cache on disk
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 0 100 0 --cut-gen-len 8 --cpu", "Weight on GPU, cache on disk", True),
+    # # Weight on CPU/GPU (50-50 split), cache on GPU
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 50 50 100 0 100 0 --cut-gen-len 8", "Weight on both CPU/GPU (50-50 split), cache on GPU"),
+    # # Weight on GPU, cache on CPU/GPU (50-50 split)
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 50 50 100 0 --cut-gen-len 8 --cpu", "Weight on GPU, cache on CPU/GPU (50-50 split)"),
+    # # Weight on GPU, cache on disk, sparse attention
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 0 100 0 --cut-gen-len 8 --cpu --attn-sparsity 0.1", "Weight on GPU, cache on disk, sparse attention", True),
+    # # Weight on GPU, cache on disk, cache quantization
+    # Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 0 0 100 0 --cut-gen-len 8 --compress-cache", "Weight on GPU, cache on disk, cache quantization", True),
     # All GPU, 2 GPU batches
     Case("--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 100 0 100 0 --cut-gen-len 8 --num-gpu-batches 2", "All GPU, 2 gpu batches"),
 ]
@@ -40,20 +40,25 @@ suite_6b7_1x1 = [
     # seq_len = 256, gen_len = 32
     # 53.29 token/s
     Case("--model facebook/opt-6.7b --path _DUMMY_ --prompt-len 256 --gen-len 32 --percent 100 0 100 0 100 0 --gpu-batch-size 4 --overlap False"),
-    # seq_len = 512, gen_len = 32
-    Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 2 --overlap False"),
-    # seq_len = 1024, gen_len = 32
-    Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 1 --overlap False --prompt-len 1024"),
+    # # seq_len = 512, gen_len = 32
+    # Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 2 --overlap False"),
+    # # seq_len = 1024, gen_len = 32
+    #Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 1 --overlap False --prompt-len 1024"),
+    #testing 
+    # Case("--model facebook/opt-6.7b --path _DUMMY_ --prompt-len 8 --gen-len 1 --percent 100 0 100 0 100 0 --gpu-batch-size 1 --overlap False"),
+    # Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 1 --overlap False --prompt-len 64"),
 ]
 
 suite_6b7_1x1_comp = [
     # seq_len = 256, gen_len = 32
-    # 56.72 token/s
-    Case("--model facebook/opt-6.7b --path _DUMMY_ --prompt-len 256 --gen-len 32 --percent 100 0 100 0 100 0 --gpu-batch-size 128 --overlap False --compress-weight --compress-cache"),
-    # seq_len = 512, gen_len = 32
-    Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 72 --overlap False --compress-weight --compress-cache"),
+    # # 56.72 token/s
+    #Case("--model facebook/opt-6.7b --path _DUMMY_ --prompt-len 256 --gen-len 32 --percent 100 0 100 0 100 0 --gpu-batch-size 128 --overlap False --compress-weight --compress-cache"),
+    # # seq_len = 512, gen_len = 32
+    # Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 72 --overlap False --compress-weight --compress-cache"),
     # seq_len = 1024, gen_len = 32
-    Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 28 --overlap False --compress-weight --compress-cache --prompt-len 1024"),
+    # Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 28 --overlap False --compress-weight --compress-cache --prompt-len 1024"),
+    # test
+    Case("--model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 14 --overlap False --compress-weight --compress-cache --prompt-len 1024"),
 ]
 
 suite_30b_1x1 = [
@@ -82,9 +87,9 @@ suite_175b_1x1 = [
     # 1.36 token/s
     Case("--model facebook/opt-175b --path _DUMMY_ --prompt-len 256 --gen-len 32 --pin-weight 0 --percent 0 50 0 0 0 100 --gpu-batch-size 64 --num-gpu-batches 8 --cpu --debug fewer_batch"),
     # seq_len = 512
-    Case("--model facebook/opt-175b --path _DUMMY_ --pin-weight 0 --percent 0 50 0 0 0 100 --gpu-batch-size 32 --num-gpu-batches 8 --cpu --debug fewer_batch"),
+    # Case("--model facebook/opt-175b --path _DUMMY_ --pin-weight 0 --percent 0 50 0 0 0 100 --gpu-batch-size 32 --num-gpu-batches 8 --cpu --debug fewer_batch"),
     # seq_len = 1024
-    Case("--model facebook/opt-175b --path _DUMMY_ --pin-weight 0 --percent 0 50 0 0 0 100 --gpu-batch-size 12 --num-gpu-batches 12 --cpu --debug fewer_batch --prompt-len 1024"),
+    # Case("--model facebook/opt-175b --path _DUMMY_ --pin-weight 0 --percent 0 50 0 0 0 100 --gpu-batch-size 12 --num-gpu-batches 12 --cpu --debug fewer_batch --prompt-len 1024"),
 ]
 
 suite_175b_1x1_comp = [
@@ -149,7 +154,7 @@ suite_175b_stage = [
     # 1x1 policy
     Case("--model facebook/opt-175b-stage --path _DUMMY_ --pin-weight 0 --percent 0 50 0 0 0 100 --gpu-batch-size 32 --num-gpu-batches 8 --cpu --debug fewer_batch", "", True),
 
-    # full cpu policy
+    # full cpu policy 
     Case("--model facebook/opt-175b-stage --path _DUMMY_ --pin-weight 0 --percent 0 100 0 100 0 100 --gpu-batch-size 32 --num-gpu-batches 6 --cpu --debug fewer_batch", "", True),
 ]
 

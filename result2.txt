@@ -1,0 +1,9 @@
+<run_flexgen>: args.model: facebook/opt-6.7b
+model size: 12.386 GB, cache size: 4.250 GB, hidden size (prefill): 0.066 GB
+init weight...
+warmup - generate
+# Output token ids
+# Intermediate tensors
+Overlap I/O and compute
+generation_loop_overlap_multi_batch()
+# $Generate: i[%d], j[%d], k[%d]  1 2 66
