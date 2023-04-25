@@ -21,7 +21,9 @@ try:
     import ipdb
 except:
     import pdb as ipdb
-    
+
+#from flexgen_kj.flex_opt_kj import deb
+# from flexgen_kj.flex_opt_kj import deb
 general_copy_compressed = TorchCompressedDevice = None
 global_cpu_device = None
 global_disk_device = None
@@ -310,7 +312,7 @@ class TorchDevice:
             w_k = w_k.device.decompress(w_k)
             w_v = w_v.device.decompress(w_v)
             w_out = w_out.device.decompress(w_out)
-
+        
         ipdb.set_trace() # inputs.shape = None
         b, s, h = inputs.shape
         head_dim = h // n_head

@@ -40,6 +40,7 @@ fix_recursive_import()
 DUMMY_WEIGHT = "_DUMMY_"  # Use dummy weights for benchmark purposes
 
 
+
 @dataclasses.dataclass(frozen=True)
 class Policy:
     gpu_batch_size: int
@@ -1464,47 +1465,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     assert len(args.percent) == 6
-
+    
     run_flexgen(args)
-    
-    # with torch.autograd.profiler.profile(
-    #     enabled=True, 
-    #     use_cuda=True, 
-    #     record_shapes=False, 
-    #     profile_memory=True,
-    #     with_stack=True
-    #     ) as prof:
-    #     outputs = model(dump_input)
-    # # print(prof.table())
-    # prof.export_chrome_trace('./flex_profile.json')
-    
-    '''
-    
-    with torch.profiler.profile(
-        activities=[
-            torch.profiler.ProfilerActivity.CPU,
-            torch.profiler.ProfilerActivity.CUDA],
-        schedule=torch.profiler.schedule(
-            wait=1,
-            warmup=1,
-            active=2),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler('./result', worker_name='worker0'),
-        record_shapes=True,
-        profile_memory=True,  # This will take 1 to 2 minutes. Setting it to False could greatly speedup.
-        with_stack=True
-    ) as p:
-        for step, data in enumerate(trainloader, 0):
-            print("step:{}".format(step))
-            inputs, labels = data[0].to(device=device), data[1].to(device=device)
-
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            if step + 1 >= 4:
-                break
-            p.step()
-    '''
     
