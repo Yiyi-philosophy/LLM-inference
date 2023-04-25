@@ -1,4 +1,5 @@
 #!/bin/bash
+#conda activate flexgen
 export CUDA_VISIBLE_DEVICES=1
 set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
 # https://blog.csdn.net/MirageTanker/article/details/127998036#%E6%80%BB%E7%BB%93
@@ -17,11 +18,11 @@ set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
 # ### flex_opt, kj
 # ipdb https://zhuanlan.zhihu.com/p/365255205
 python -m flexgen_kj.flex_opt_kj \
---model facebook/opt-6.7b \
+--model facebook/opt-1.3b \
 --path _DUMMY_ \
 --percent 100 0 100 0 100 0 \
 --gpu-batch-size 4 \
---num-gpu-batches 2 \
+--num-gpu-batches 4 \
 --overlap True \
 --compress-weight \
 --compress-cache \

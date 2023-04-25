@@ -247,7 +247,7 @@ class TorchDevice:
             w_token = w_token.device.decompress(w_token)
             w_pos = w_pos.device.decompress(w_pos)
 
-        ipdb.set_trace() # $$ break
+        # ipdb.set_trace() # $$ break
         token_ids = inputs.data
         mask = attention_mask.data
         if donate[0]: inputs.delete()
@@ -311,6 +311,7 @@ class TorchDevice:
             w_v = w_v.device.decompress(w_v)
             w_out = w_out.device.decompress(w_out)
 
+        ipdb.set_trace() # inputs.shape = None
         b, s, h = inputs.shape
         head_dim = h // n_head
         scaling = head_dim ** -0.5

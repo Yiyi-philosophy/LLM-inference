@@ -12,7 +12,7 @@ set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
 
 ### flex_opt, jk
 python -m flexgen.flex_opt \
---model facebook/opt-6.7b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 8 --num-gpu-batches 2 --overlap True --compress-weight --compress-cache --prompt-len 512
+--model facebook/opt-1.3b --path _DUMMY_ --percent 100 0 100 0 100 0 --gpu-batch-size 4 --num-gpu-batches 4 --overlap True --compress-weight --compress-cache --prompt-len 512
 
 ### flex_opt, kj
 # # ipdb https://zhuanlan.zhihu.com/p/365255205

@@ -30,6 +30,12 @@ from flexgen.utils import (Task, ExecutionEnv, GB, T, ValueHolder,
     torch_mem_stats, torch_dtype_to_np_dtype, write_benchmark_log,
     read_benchmark_log)
 
+try:
+    import ipdb
+except:
+    import pdb as ipdb
+    
+    
 fix_recursive_import()
 
 DUMMY_WEIGHT = "_DUMMY_"  # Use dummy weights for benchmark purposes
@@ -1073,9 +1079,11 @@ class OptLM:
                     self.load_weight(i, j+1, k)
                     
                     self.load_cache(i, j, k+1)
+                    ipdb.set_trace() #
                     self.store_hidden(i, j, k-1)
                     
                     self.load_hidden(i, j, k+1)
+                    
                     self.compute_layer(i, j, k)
                     
                     self.store_cache(i, j, k-1)

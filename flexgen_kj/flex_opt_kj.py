@@ -208,7 +208,7 @@ class InputEmbed:
         else:
             (w_token, _), (w_pos, _) = weight_read_buf.val
         
-        ipdb.set_trace() # $$ break
+        # ipdb.set_trace() # $$ break
         h = self.compute.opt_input_embed(h, mask, w_token, w_pos, self.config.pad_token_id, donate)
         hidden.val = h
 
@@ -447,6 +447,7 @@ class SelfAttention:
         n_head = self.config.n_head
 
         donate = [False] * 14
+        ipdb.set_trace() # hidden.val = None
         h, donate[0] = hidden.val, True
 
         if k == self.policy.num_gpu_batches - 1:
@@ -460,7 +461,10 @@ class SelfAttention:
              (w_ln, _), (b_ln, _)) = weight_read_buf.val
 
         if i == 0:  # prefill
+            
             mask, donate[1] = attention_mask.val.smart_copy(self.compute)
+            # $ ERROR
+            ipdb.set_trace() # 0 1 0
             h, new_k_cache, new_v_cache = self.compute.mha(h, mask, w_q, b_q,
                 w_k, b_k, w_v, b_v, w_out, b_out, w_ln, b_ln, n_head, donate,
                 self.policy.compress_cache, self.policy.comp_cache_config)
@@ -613,6 +617,7 @@ class OptLM:
 
         layers = []
         layers.append(InputEmbed(self.config, self.env, self.policy))
+        print("InputEmbed layer: ",  len(layers))
         for i in range(self.config.num_hidden_layers):
             if policy.sep_layer:
                 layers.append(SelfAttention(self.config, self.env, self.policy, i))
@@ -622,6 +627,7 @@ class OptLM:
         layers.append(OutputEmbed(self.config, self.env, self.policy))
         self.layers = layers
         self.num_layers = len(layers)
+        print("OutputEmbed layers:",  len(layers))
 
         if self.policy.act_gpu_percent == 100:
             self.act_home = self.env.gpu
@@ -773,7 +779,7 @@ class OptLM:
     def store_hidden(self, i, j, k):
         # Handle corner cases
         if k == -1:
-            k = self.num_gpu_batches - 1
+            k = self.num_gpu_batches - 1 # $
             j -= 1
         if j == -1:
             j = self.num_layers - 1
@@ -804,6 +810,7 @@ class OptLM:
         # Clear the weight_read_buf if it is the last gpu batch
         # Clear the cache_read_buf
         # Run layer computation
+        ipdb.set_trace() # self.hidden[i][j][k], 
         self.layers[j].forward(
             self.hidden[i][j][k], 
             self.cache_read_buf[j][k],
@@ -842,7 +849,7 @@ class OptLM:
             (self.policy.gpu_batch_size, self.task.prompt_len), bool)
         val.load_from_np((input_ids != self.config.pad_token_id))
         self.attention_mask[k].store(val)
-
+   
     def generate(self,
                  inputs: Union[np.array, List[List[int]]],
                  max_new_tokens: int = 32,
@@ -851,7 +858,7 @@ class OptLM:
                  stop: Optional[int] = None,
                  debug_mode: Optional[str] = None,
                  cut_gen_len: Optional[int] = None,
-                 verbose: int = 0):
+                 verbose: int = 0):          
         task = Task(
             inputs=inputs,
             prompt_len=len(inputs[0]),
@@ -891,6 +898,7 @@ class OptLM:
             self.weight_read_buf[j].clear()
         for k in range(num_gpu_batches):
             self.attention_mask[k].clear()
+        
         self.hidden = array_3d(gen_len, num_layers, num_gpu_batches, ValueHolder)
 
         # Init cache
@@ -1069,27 +1077,101 @@ class OptLM:
         self.load_hidden(0, 0, 0)
         self.sync()
 
-        # Generate
-        print("# $Generate: i[%d], j[%d], k[%d] ", self.execute_gen_len, self.num_layers, self.num_gpu_batches )
-        for i in range(self.execute_gen_len):
-            timers("generate").start()
-            for k in range(self.num_gpu_batches):
-                self.update_attention_mask(i, k)
-            for k in range(self.num_gpu_batches):
-                for j in range(self.num_layers):
-                    print("i,j,k=",i,j,k)
-                    self.load_weight    (i, j, k-1)
-                    
-                    self.load_cache     (i, j+1, k)
-                    self.store_hidden   (i, j-1, k)
-                    
-                    self.load_hidden    (i, j+1, k)
-                    self.compute_layer  (i, j, k)
-                    
-                    self.store_cache    (i, j-1, k)
-                    self.sync()
-            timers("generate").stop()
+        # Generate Total: .//=//.
+        print("# $Generate: i[], j[], k[] ", self.execute_gen_len, self.num_layers, self.num_gpu_batches )
 
+        if (self.execute_gen_len == args.num_gpu_batches-1) : # warm up
+            # up ./
+            print("# up ./")
+            # ipdb.set_trace() # $$ break
+            for i in range(0, self.num_gpu_batches - 1): # 0-3
+                timers("generate").start()
+                for k in range(self.num_gpu_batches):
+                    self.update_attention_mask(i, k)
+                for j in range(self.num_layers):
+                    for k in range(self.num_gpu_batches):
+                        print("i,j,k=",i,j,k)
+                        self.load_weight(i, j+1, k)
+                        
+                        self.load_cache(i, j, k+1)
+                        ipdb.set_trace() #
+                        self.store_hidden(i, j, k-1)
+                        
+                        self.load_hidden(i, j, k+1)
+                        
+                        self.compute_layer(i, j, k)
+                        
+                        self.store_cache(i, j, k-1)
+                        self.sync()
+                timers("generate").stop()
+            '''
+            for i in range(0, self.num_gpu_batches - 1): # 0-3
+                timers("generate").start()
+                for k in range(0, self.num_gpu_batches - i - 1):
+                    self.update_attention_mask(i, k)
+                for j in range(self.num_layers):
+                    for k in range(0, self.num_gpu_batches - i - 1): # 0-3
+                        print("i,j,k=",i,j,k)
+                        
+                        self.load_weight(i, j+1, k)
+                        
+                        self.load_cache(i, j, k+1)
+                        ipdb.set_trace() #
+                        self.store_hidden(i, j, k-1)
+                        
+                        self.load_hidden(i, j, k+1)
+
+                        self.compute_layer(i, j, k)
+                        
+                        self.store_cache(i, j, k-1)
+                        self.sync()
+                timers("generate").stop()
+                '''
+        else : # generate
+            # parallelogram /=/
+            print("# parallelogram /=/")
+            for q in range(self.num_gpu_batches, self.execute_gen_len): # 1-3
+                for i in range(q, q - self.num_gpu_batches, -1): # 3-0
+                    timers("generate").start()
+                    for k in range(0, self.num_gpu_batches):
+                        self.update_attention_mask(i, k)
+                    for j in range(self.num_layers):
+                        for k in range(self.num_gpu_batches): # 0-3
+                            print("i,j,k=",i,j,k)
+                            self.load_weight(i, j+1, k)
+                            
+                            self.load_cache(i, j, k+1)
+                            self.store_hidden(i, j, k-1)
+                            
+                            self.load_hidden(i, j, k+1)
+                            self.compute_layer(i, j, k)
+                            
+                            self.store_cache(i, j, k-1)
+                            self.sync()
+                    timers("generate").stop()
+            # down /.
+            print("# down /.")
+            for i in range(self.execute_gen_len - self.num_gpu_batches + 1, self.execute_gen_len): # 1-3
+                #timers("generate").start()
+                for k in range(self.execute_gen_len - i, self.num_gpu_batches):
+                    self.update_attention_mask(i, k)
+                for j in range(self.num_layers):
+                    for k in range(self.execute_gen_len - i, self.num_gpu_batches):
+                        print("i,j,k=",i,j,k)
+                        self.load_weight(i, j+1, k)
+                        
+                        self.load_cache(i, j, k+1)
+                        self.store_hidden(i, j, k-1)
+                        
+                        self.load_hidden(i, j, k+1)
+                        self.compute_layer(i, j, k)
+                        
+                        self.store_cache(i, j, k-1)
+                        self.sync()
+                #timers("generate").stop()
+            
+            
+        
         # Epilogue
         self.store_hidden(
             self.execute_gen_len-1, self.num_layers-1, self.num_gpu_batches-1)
@@ -1161,8 +1243,8 @@ class OptLM:
             for j in range(self.num_layers):
                 if i > 0: timers("decoding_gpu_batch").start()
                 for k in range(self.num_gpu_batches):
-                    print("i,j,k=%d,%d,%d", i,j,k)
-                    self.load_weight    (i, j, k)
+                    #print("i,j,k=", i,j,k)
+                    self.load_weight    (i, j  , k)
                     self.load_cache     (i, j  , k+1)
                     self.store_hidden   (i, j  , k-1)
                     self.load_hidden    (i, j  , k+1)
@@ -1262,15 +1344,24 @@ def run_flexgen(args):
     model = OptLM(opt_config, env, args.path, policy)
 
     try:
+        # $$ i*j*k = 4*4*4
         print("warmup - generate")
+        print("max_new_tokens:", args.num_gpu_batches-1)
         output_ids = model.generate(
-            warmup_inputs, max_new_tokens=1, verbose=args.verbose)
+            warmup_inputs, 
+            max_new_tokens=args.num_gpu_batches-1, 
+            # max_new_tokens = 0 - 3
+            verbose=args.verbose)
 
         print("benchmark - generate")
+        print("max_new_tokens:", args.gen_len, "cut_gen_len", cut_gen_len)
         timers("generate").reset()
         output_ids = model.generate(
-            inputs, max_new_tokens=args.gen_len,
-            debug_mode=args.debug_mode, cut_gen_len=cut_gen_len, verbose=args.verbose)
+            inputs, 
+            max_new_tokens=args.gen_len,
+            debug_mode=args.debug_mode, 
+            cut_gen_len=cut_gen_len, 
+            verbose=args.verbose)
         costs = timers("generate").costs
     finally:
         env.close_copy_threads()
