@@ -1131,7 +1131,7 @@ class OptLM:
                 timers("generate").stop()
                 '''
         else : # generate
-            # parallelogram /=/
+            # parallelogram /=/ 
             print("# parallelogram /=/")
             for q in range(self.num_gpu_batches, self.execute_gen_len): # 1-3
                 for i in range(q, q - self.num_gpu_batches, -1): # 3-0

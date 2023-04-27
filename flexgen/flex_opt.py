@@ -673,11 +673,10 @@ class OptLM:
         # Handle corner cases
         if j == self.num_layers:
             j = 0
-            i += 1
-            print("    load_weight:", i, j, k)
+            i += 1 
             if i == self.execute_gen_len:
                 return
-
+        print("    load_weight:", i, j, k)
         # Load from weight_home to weight_read_buf
         if overlap:
             with torch.cuda.stream(self.load_weight_stream):
