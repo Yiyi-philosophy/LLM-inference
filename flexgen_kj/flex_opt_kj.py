@@ -15,6 +15,8 @@ from tqdm import tqdm
 import torch
 from transformers import AutoTokenizer
 
+import sys
+sys.path.append("/home/dingyiran/FlexGen/")
 # CUDA Mem detect
 torch.cuda.memory._record_memory_history(True)
 from pprint import  pprint
@@ -642,7 +644,7 @@ class OptLM:
         # CUDA streams
         self.load_weight_stream = torch.cuda.Stream()
         self.load_cache_stream = torch.cuda.Stream()
-        self.store_cache_stream = torch.cuda.Stream()
+        self.store_cache_stream = torch.cuda.Stream()   
 
         # Intermediate tensors
         # The following buffers store values used
@@ -1095,7 +1097,7 @@ class OptLM:
                         self.load_weight(i, j+1, k)
                         
                         self.load_cache(i, j, k+1)
-                        ipdb.set_trace() #
+                        # ipdb.set_trace() #
                         self.store_hidden(i, j, k-1)
                         
                         self.load_hidden(i, j, k+1)
@@ -1135,7 +1137,8 @@ class OptLM:
                 for i in range(q, q - self.num_gpu_batches, -1): # 3-0
                     timers("generate").start()
                     for k in range(0, self.num_gpu_batches):
-                        self.update_attention_mask(i, k)
+                        ipdb.set_trace()
+                        self.update_attention_mask(i, k) 
                     for j in range(self.num_layers):
                         for k in range(self.num_gpu_batches): # 0-3
                             print("i,j,k=",i,j,k)

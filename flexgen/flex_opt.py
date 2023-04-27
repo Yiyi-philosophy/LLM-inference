@@ -30,10 +30,10 @@ from flexgen.utils import (Task, ExecutionEnv, GB, T, ValueHolder,
     torch_mem_stats, torch_dtype_to_np_dtype, write_benchmark_log,
     read_benchmark_log)
 
-try:
-    import ipdb
-except:
-    import pdb as ipdb
+# try:
+#     import ipdb
+# except:
+#     import pdb as ipdb
     
     
 fix_recursive_import()
@@ -674,6 +674,7 @@ class OptLM:
         if j == self.num_layers:
             j = 0
             i += 1
+            print("    load_weight:", i, j, k)
             if i == self.execute_gen_len:
                 return
 
@@ -708,7 +709,7 @@ class OptLM:
             i += 1
             if i == self.execute_gen_len:
                 return
-
+        print("    load_cache", i, j, k)
         # Load from cache_home to cache_read_buf
         if overlap:
             with torch.cuda.stream(self.load_cache_stream):
@@ -729,7 +730,7 @@ class OptLM:
         if i == self.task.gen_len - 1:  # last token, no need to store cache
             self.cache_write_buf[j][k].pop()
             return
-
+        print("    store_cache:", i, j, k)
         # Store cache_write_buf to cache_home
         # Delete cache_write_buf
         if overlap:
@@ -754,7 +755,7 @@ class OptLM:
             i += 1
             if i == self.execute_gen_len:
                 return
-
+        print("    load_weight:", i, j, k)
         # Load to hidden states buffers
         dst = self.layers[j].compute
         if j == 0:
@@ -781,7 +782,7 @@ class OptLM:
             i -= 1
             if i == -1:
                 return
-
+        print("    store_hidden:", i, j, k)
         # Store to hidden states buffers
         if j == self.num_layers - 1:  # store to output
             gpu_batch_size = self.policy.gpu_batch_size
@@ -1070,6 +1071,7 @@ class OptLM:
         # Generate
         print("# $Generate: i[%d], j[%d], k[%d] ", self.execute_gen_len, self.num_layers, self.num_gpu_batches )
         for i in range(self.execute_gen_len):
+            print("========================================================================================================================")
             timers("generate").start()
             for k in range(self.num_gpu_batches):
                 self.update_attention_mask(i, k)
@@ -1079,7 +1081,7 @@ class OptLM:
                     self.load_weight(i, j+1, k)
                     
                     self.load_cache(i, j, k+1)
-                    ipdb.set_trace() #
+                    # ipdb.set_trace() #
                     self.store_hidden(i, j, k-1)
                     
                     self.load_hidden(i, j, k+1)
