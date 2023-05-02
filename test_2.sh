@@ -21,9 +21,10 @@ python -m flexgen_kj.flex_opt_kj \
 --model facebook/opt-1.3b \
 --path _DUMMY_ \
 --percent 100 0 100 0 100 0 \
+--debug-mode fewer_batch \
 --gpu-batch-size 4 \
 --num-gpu-batches 4 \
---overlap True \
+--overlap False \
 --compress-weight \
 --compress-cache \
 --prompt-len 512

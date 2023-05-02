@@ -313,7 +313,7 @@ class TorchDevice:
             w_v = w_v.device.decompress(w_v)
             w_out = w_out.device.decompress(w_out)
         
-        ipdb.set_trace() # inputs.shape = None
+        # ipdb.set_trace() # inputs.shape = None
         b, s, h = inputs.shape
         head_dim = h // n_head
         scaling = head_dim ** -0.5
