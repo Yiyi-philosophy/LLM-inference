@@ -466,7 +466,7 @@ class SelfAttention:
             
             mask, donate[1] = attention_mask.val.smart_copy(self.compute)
             # $ ERROR
-            ipdb.set_trace() # 0 1 0
+            # ipdb.set_trace() # 0 1 0
             h, new_k_cache, new_v_cache = self.compute.mha(h, mask, w_q, b_q,
                 w_k, b_k, w_v, b_v, w_out, b_out, w_ln, b_ln, n_head, donate,
                 self.policy.compress_cache, self.policy.comp_cache_config)
@@ -1063,7 +1063,7 @@ class OptLM:
         # for the i-th token, j-th layer, k-th gpu batch.
         num_layers, num_gpu_batches = self.num_layers, self.policy.num_gpu_batches
         
-        ipdb.set_trace()
+        # ipdb.set_trace()
         print("# flag_warmup", flag_warmup)
         
         for j in range(num_layers):
@@ -1311,7 +1311,7 @@ class OptLM:
                 for i in range(q, q - self.num_gpu_batches, -1): # 3-0
                     timers("generate").start()
                     for k in range(0, self.num_gpu_batches):
-                        ipdb.set_trace()
+                        # ipdb.set_trace()
                         self.update_attention_mask(i, k) 
                     for j in range(self.num_layers):
                         for k in range(self.num_gpu_batches): # 0-3
@@ -1452,7 +1452,9 @@ class OptLM:
                     for j in range(self.num_layers):
                         for k in range(0, self.num_gpu_batches - i - 1): # 0-3
                             print("i,j,k=",i,j,k)
-                            ipdb.set_trace()
+                            # ipdb.set_trace()
+                            if (i==0 and j == 49 and k ==0): 
+                                ipdb.set_trace()
                             self.load_weight(i, j+1, k)
                             
                             self.load_cache(i, j, k+1)
@@ -1460,7 +1462,7 @@ class OptLM:
                             self.store_hidden(i, j, k-1)
                             
                             self.load_hidden(i, j, k+1)
-                            ipdb.set_trace()
+                            # ipdb.set_trace()
                             self.compute_layer(i, j, k)
                             # print("    compute_layer:", i, j, k)
                             self.store_cache(i, j, k-1)
