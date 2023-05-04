@@ -11,7 +11,7 @@ cd LLM-inference
 Run batch schedule code (in debug)
 ``` shell
 cd LLM-inference
-./test_1.sh
+./test_2.sh
 ```
 
 use this `ipdb.set_trace = lambda: None` instructions to avoid debug
