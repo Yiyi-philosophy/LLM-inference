@@ -655,8 +655,10 @@ class OptLM:
         self.cache_home = array_2d(num_layers, num_gpu_batches, ValueHolder)
         self.cache_read_buf = array_2d(num_layers, num_gpu_batches, ValueHolder)
         self.cache_write_buf = array_2d(num_layers, num_gpu_batches, ValueHolder)
+        
         # weight[j]
-        self.weight_read_buf = array_1d(num_layers, ValueHolder)
+        self.weight_read_buf = array_1d(num_layers * num_gpu_batches, ValueHolder)
+        
         # attention_mask[k]
         self.attention_mask = array_1d(num_gpu_batches, ValueHolder)
 
@@ -674,17 +676,12 @@ class OptLM:
         check_path = os.path.join(expanded_path, "decoder.embed_positions.weight")
         if not os.path.exists(check_path) and DUMMY_WEIGHT not in check_path:
             download_opt_weights(self.config.name, self.path)
-
-        self.layers[j].init_weight(self.weight_home[j], expanded_path)
+        
+        self.layers[j // self.num_layers].init_weight(self.weight_home[j], expanded_path)
+        # self.layers[j].init_weight(self.weight_home[j], expanded_path)
 
     def load_weight(self, i, j, k, overlap=True):
-        # Handle corner cases
-        # if j == self.num_layers:
-        #     j = 0
-        #     i += 1
-        #     if i == self.execute_gen_len:
-        #         return
-        # Handle corner cases
+
         if (self.flag_warmup==0): # 0: normal
             if j == self.num_layers:
                 j = 0
@@ -714,9 +711,14 @@ class OptLM:
         # Load from weight_home to weight_read_buf
         if overlap:
             with torch.cuda.stream(self.load_weight_stream):
-                self.layers[j].load_weight(self.weight_home[j], self.weight_read_buf[j], k)
+                self.layers[j].load_weight(self.weight_home[j+i*self.num_layers], self.weight_read_buf[j+i*self.num_layers], k)
+                # self.layers[j+i*self.num_layers].load_weight(
+                    # self.weight_home[j+i*self.num_layers], 
+                    # self.weight_read_buf[j+i*self.num_layers], k)
         else:
-            self.layers[j].load_weight(self.weight_home[j], self.weight_read_buf[j], k)
+            self.layers[j].load_weight(self.weight_home[j+i*self.num_layers], self.weight_read_buf[j+i*self.num_layers], k)
+            # self.layers[j].load_weight(self.weight_home[j], self.weight_read_buf[j], k)
+            
 
     def delete_weight(self, j, k):
         if k == 0:
@@ -995,8 +997,8 @@ class OptLM:
         torch.cuda.synchronize()
 
     def init_all_weights(self):
-        self.weight_home = array_1d(self.num_layers, ValueHolder)
-        for j in range(self.num_layers):
+        self.weight_home = array_1d(self.num_layers * self.num_gpu_batches, ValueHolder)
+        for j in range(self.num_layers * self.num_gpu_batches):
             self.init_weight(j)
 
     def delete_all_weights(self):
@@ -1108,7 +1110,7 @@ class OptLM:
                 self.generation_loop_debug_single_batch()
             else:
                 print("generation_loop_debug_multi_batch()")
-                self.generation_loop_debug_multi_batch(flag_warmup)
+                self.generation_loop_debug_multi_batch()
         elif debug_mode == "breakdown":
             # No overlap, fewer batches, execution time breakdown
             self.generation_loop_debug_normal()
@@ -1397,7 +1399,7 @@ class OptLM:
             else:
                 timers("generate").costs.append(self.num_layers * batch_cost)
 
-    def generation_loop_debug_multi_batch(self, flag_warmup):
+    def generation_loop_debug_multi_batch(self):
         execute_num_batches = 20
         batch_ct = 0
         pbar = tqdm(total=execute_num_batches)
@@ -1445,88 +1447,88 @@ class OptLM:
         print("./")
         # order_uptri()
         self.flag_warmup = 1
-        for i in range(0, self.num_gpu_batches - 1): # 0-3
-                    timers("generate").start()
-                    for k in range(0, self.num_gpu_batches - i - 1):
-                        self.update_attention_mask(i, k)
-                    for j in range(self.num_layers):
-                        for k in range(0, self.num_gpu_batches - i - 1): # 0-3
-                            print("i,j,k=",i,j,k)
-                            # ipdb.set_trace()
-                            if (i==0 and j == 49 and k ==0): 
-                                ipdb.set_trace()
-                            self.load_weight(i, j+1, k)
-                            
-                            self.load_cache(i, j, k+1)
+        for i in range(0, self.num_gpu_batches - 1): # 0-2
+            timers("generate").start()
+            for k in range(0, self.num_gpu_batches - i - 1):
+                self.update_attention_mask(i, k)
+            for j in range(self.num_layers):
+                for k in range(0, self.num_gpu_batches - i - 1): # 0-3
+                    print("i,j,k=",i,j,k)
+                    # ipdb.set_trace()
+                    if (i==0 and j == 49 and k ==0): 
+                        ipdb.set_trace()
+                    self.load_weight(i, j+1, k)
+                    
+                    self.load_cache(i, j, k+1)
 
-                            self.store_hidden(i, j, k-1)
-                            
-                            self.load_hidden(i, j, k+1)
-                            # ipdb.set_trace()
-                            self.compute_layer(i, j, k)
-                            # print("    compute_layer:", i, j, k)
-                            self.store_cache(i, j, k-1)
-                            self.sync()
-                    timers("generate").stop()
+                    self.store_hidden(i, j, k-1)
+                    
+                    self.load_hidden(i, j, k+1)
+                    # ipdb.set_trace()
+                    self.compute_layer(i, j, k)
+                    # print("    compute_layer:", i, j, k)
+                    self.store_cache(i, j, k-1)
+                    self.sync()
+            timers("generate").stop()
         
         # elif (flag_warmup == 2):
         print("/=/")
         # order_parallelogram()     
         for i in range(0, self.execute_gen_len-self.num_gpu_batches+1): # 0-46
-                timers("generate").start()
-                for k in range(self.num_gpu_batches-1, -1, -1):
-                    self.update_attention_mask(i, k)
-                for j in range(self.num_layers):
-                    for k in range(self.num_gpu_batches-1, -1, -1): # 3-0
-                        q = i + self.num_gpu_batches-1 - k # i + 0-3
-                        print("i,j,k=",q,j,k)
-                        
-                        # load_weight(i, j+1, k)
-                        self.load_weight     (q, j+1, k)
-                        
-                        #load_cache(i, j, k+1)
-                        self.load_cache      (q+1, j, k-1)
+            timers("generate").start()
+            for k in range(self.num_gpu_batches-1, -1, -1):
+                self.update_attention_mask(i, k)
+            for j in range(self.num_layers):
+                for k in range(self.num_gpu_batches-1, -1, -1): # 3-0
+                    q = i + self.num_gpu_batches-1 - k # i + 0-3
+                    print("i,j,k=",q,j,k)
+                    
+                    # load_weight(i, j+1, k)
+                    self.load_weight     (q, j+1, k)
+                    
+                    #load_cache(i, j, k+1)
+                    self.load_cache      (q+1, j, k-1)
 
-                        # store_hidden(i, j, k-1)
-                        self.store_hidden    (q-1, j, k+1)
-                        
-                        # load_hidden(i, j, k+1)
-                        self.load_hidden     (q+1, j, k-1)
-                        
-                        self.compute_layer(q, j, k)
-                        # print("    compute_layer:", q, j, k)
-                        
-                        # store_cache(i, j, k-1)
-                        self.store_cache     (q-1, j, k+1)
-                        self.sync()
-                timers("generate").stop()
+                    # store_hidden(i, j, k-1)
+                    self.store_hidden    (q-1, j, k+1)
+                    
+                    # load_hidden(i, j, k+1)
+                    self.load_hidden     (q+1, j, k-1)
+                    
+                    self.compute_layer(q, j, k)
+                    # print("    compute_layer:", q, j, k)
+                    
+                    # store_cache(i, j, k-1)
+                    self.store_cache     (q-1, j, k+1)
+                    self.sync()
+            timers("generate").stop()
 
         # else:
         print("/.")
         # order_downtri()
         for i in range(self.execute_gen_len - self.num_gpu_batches + 1, self.execute_gen_len): # 1-3
-                # timers("generate").start()
+            # timers("generate").start()
+            for k in range(self.execute_gen_len - i, self.num_gpu_batches):
+                self.update_attention_mask(i, k)
+            for j in range(self.num_layers):
                 for k in range(self.execute_gen_len - i, self.num_gpu_batches):
-                    self.update_attention_mask(i, k)
-                for j in range(self.num_layers):
-                    for k in range(self.execute_gen_len - i, self.num_gpu_batches):
-                        print("i,j,k=",i,j,k)
-                        
-                        self.load_weight(i, j+1, k)
-                        
-                        self.load_cache(i, j, k+1)
-                        
-                        self.store_hidden(i, j, k-1)
-                        
-                        self.load_hidden(i, j, k+1)
-                        
-                        self.compute_layer(i, j, k)
-                        # print("    compute_layer:", i, j, k)
-                        
-                        self.store_cache(i, j, k-1)
-                        self.sync()
-                # timers("generate").stop()
-        
+                    print("i,j,k=",i,j,k)
+                    
+                    self.load_weight(i, j+1, k)
+                    
+                    self.load_cache(i, j, k+1)
+                    
+                    self.store_hidden(i, j, k-1)
+                    
+                    self.load_hidden(i, j, k+1)
+                    
+                    self.compute_layer(i, j, k)
+                    # print("    compute_layer:", i, j, k)
+                    
+                    self.store_cache(i, j, k-1)
+                    self.sync()
+            # timers("generate").stop()
+    
                 
         # Convert "decoding_gpu_batch" timer to "generate" timer
         batch_cost = np.mean(timers("decoding_gpu_batch").costs[10:])
