@@ -1454,7 +1454,7 @@ class OptLM:
             for j in range(self.num_layers):
                 for k in range(0, self.num_gpu_batches - i - 1): # 0-3
                     print("i,j,k=",i,j,k)
-                    # ipdb.set_trace()
+                    ipdb.set_trace()
                     if (i==0 and j == 49 and k ==0): 
                         ipdb.set_trace()
                     self.load_weight(i, j+1, k)
