@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 proxyon
 git add .
 git commit -m "update D"
