@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/bash 
+# proxyon
 git add .
-git commit -m "update iipl107"
-git push git main
+git commit -m "update D"
+git push -u git main

@@ -200,6 +200,8 @@ class InputEmbed:
     def forward(self, hidden, cache_read_buf, weight_read_buf, attention_mask,
                 cache_write_buf, i, k):
         # Compute input embedding
+        ipdb.set_trace()
+        
         donate = [False] * 4
         h, donate[0] = hidden.val, True
         mask, donate[1] = attention_mask.val.smart_copy(self.compute)
@@ -715,6 +717,7 @@ class OptLM:
         if overlap:
             with torch.cuda.stream(self.load_weight_stream):
                 # self.layers[j].load_weight(self.weight_home[j+i*self.num_layers], self.weight_read_buf[j+i*self.num_layers], k)
+                print("weight_home[j][i]:",j , i)
                 self.layers[j].load_weight(self.weight_home[j][i], self.weight_read_buf[j][i], k)
         else:
             # self.layers[j].load_weight(self.weight_home[j+i*self.num_layers], self.weight_read_buf[j+i*self.num_layers], k)
@@ -748,7 +751,8 @@ class OptLM:
                 if i == self.execute_gen_len:
                     return
         elif (self.flag_warmup==1): # 1: ./
-            if i == 0:  # prefill, no cache
+            if i == 0:  
+                # prefill, no cache
                 return
             if k == self.num_gpu_batches - 1 - i:
                 k = 0
@@ -1414,7 +1418,8 @@ class OptLM:
         timers("prefill").reset()
         timers("decoding_gpu_batch").reset()
 
-        #Prologue
+        # Prologue
+        # for k in range(self.num_gpu_batches):
         for k in range(self.num_gpu_batches):
             self.load_weight(0, 0, k)
         self.load_hidden(0, 0, 0)
@@ -1465,15 +1470,14 @@ class OptLM:
                 for k in range(0, self.num_gpu_batches - i - 1): # 0-3
                     print("i,j,k=",i,j,k)
                     #ipdb.set_trace()
-                    # if (i==1 and j == 49 and k ==1): 
-                    if (i==1 and j == 0 and k ==0) or (i==1 and j == 49 and k ==1): 
+                    if (i==2 and j == 0 and k ==0): 
                         ipdb.set_trace()
                     self.load_weight(i, j+1, k)
                     
                     self.load_cache(i, j, k+1)
 
                     self.store_hidden(i, j, k-1)
-                    if (i==1 and j == 0 and k ==0) or (i==1 and j == 49 and k ==1): 
+                    if (i==2 and j==0 and k ==0): 
                         ipdb.set_trace()
                     self.load_hidden(i, j, k+1)
                     # ipdb.set_trace()
