@@ -1,6 +1,6 @@
 #!/bin/bash
 #conda activate flexgen
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
 # https://blog.csdn.net/MirageTanker/article/details/127998036#%E6%80%BB%E7%BB%93
 

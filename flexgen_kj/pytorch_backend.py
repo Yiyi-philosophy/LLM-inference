@@ -277,7 +277,7 @@ class TorchDevice:
             w_token = w_token.device.decompress(w_token)
 
         b, s, h = inputs.shape
-
+        # torch.Size([4, 1, 2048])
         hidden = F.layer_norm(inputs.data, (h,), weight=w_ln.data, bias=b_ln.data)
         if donate[0]: inputs.delete()
 

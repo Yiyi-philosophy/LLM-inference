@@ -203,7 +203,8 @@ class InputEmbed:
         donate = [False] * 4
         h, donate[0] = hidden.val, True
         mask, donate[1] = attention_mask.val.smart_copy(self.compute)
-
+        print("InputEmbed h:", h)
+        
         if k == self.policy.num_gpu_batches - 1:
             # Clear the weight_read_buf if it is the last gpu batch
             (w_token, donate[2]), (w_pos, donate[3]) = weight_read_buf.pop()
@@ -269,7 +270,7 @@ class OutputEmbed:
                 cache_write_buf, i, k):
         donate = [False] * 4
         h, donate[0] = hidden.val, True
-
+        print("OutputEmbed h:", h)
         if k == self.policy.num_gpu_batches - 1:
             # Clear the weight_read_buf if it is the last gpu batch
             (w_ln, donate[1]), (b_ln, donate[2]), (w_token, donate[3]) = weight_read_buf.pop()
@@ -916,6 +917,7 @@ class OptLM:
                 val.load_from_np(self.output_ids[left:right, pos-1:pos])
         else:  # load from the last layer
             val = self.hidden[i][j-1][k].pop().move(dst)
+        print("l_h ",i,j,k,":", self.hidden[i][j][k].val)
         self.hidden[i][j][k].store(val)
 
     def store_hidden(self, i, j, k):
@@ -1463,14 +1465,16 @@ class OptLM:
                 for k in range(0, self.num_gpu_batches - i - 1): # 0-3
                     print("i,j,k=",i,j,k)
                     #ipdb.set_trace()
-                    if (i==0 and j == 49 and k ==0): 
+                    # if (i==1 and j == 49 and k ==1): 
+                    if (i==1 and j == 0 and k ==0) or (i==1 and j == 49 and k ==1): 
                         ipdb.set_trace()
                     self.load_weight(i, j+1, k)
                     
                     self.load_cache(i, j, k+1)
 
                     self.store_hidden(i, j, k-1)
-                    
+                    if (i==1 and j == 0 and k ==0) or (i==1 and j == 49 and k ==1): 
+                        ipdb.set_trace()
                     self.load_hidden(i, j, k+1)
                     # ipdb.set_trace()
                     self.compute_layer(i, j, k)
