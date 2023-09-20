@@ -1,7 +1,7 @@
 #!/bin/bash
-#conda activate flexgen
-export CUDA_VISIBLE_DEVICES=1
-set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
+# # bash `conda activate flexgen`
+# export CUDA_VISIBLE_DEVICES=4
+# set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:16
 # https://blog.csdn.net/MirageTanker/article/details/127998036#%E6%80%BB%E7%BB%93
 
 # nvprof -o prof_1b3.nvvp 
@@ -17,14 +17,29 @@ set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
 
 # ### flex_opt, kj
 # ipdb https://zhuanlan.zhihu.com/p/365255205
+# python -m flexgen_kj.flex_opt_kj \
+# --model facebook/opt-1.3b \
+# --path _DUMMY_ \
+# --percent 100 0 100 0 100 0 \
+# --debug-mode fewer_batch \
+# --gpu-batch-size 4 \
+# --num-gpu-batches 4 \
+# --overlap False \
+# --compress-weight \
+# --compress-cache \
+# --prompt-len 512
+
+# python -m flexgen_kj.flex_opt_kj \
+# --model facebook/opt-1.3b \
+# --gpu-batch-size 4 \
+# --percent 100 0 100 0 100 0 \
+# --num-gpu-batches 4 \
+# --debug-mode fewer_batch
+
+#!/bin/bash
+#conda activate flexgen
+export CUDA_VISIBLE_DEVICES=0
+set PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
+### flex_opt, jk
 python -m flexgen_kj.flex_opt_kj \
---model facebook/opt-1.3b \
---path _DUMMY_ \
---percent 100 0 100 0 100 0 \
---debug-mode fewer_batch \
---gpu-batch-size 4 \
---num-gpu-batches 4 \
---overlap False \
---compress-weight \
---compress-cache \
---prompt-len 512
+--model facebook/opt-1.3b --gpu-batch-size 16 --percent 100 0 100 0 100 0 --cut-gen-len 8 --num-gpu-batches 2

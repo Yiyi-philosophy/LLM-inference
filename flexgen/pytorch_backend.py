@@ -354,6 +354,7 @@ class TorchDevice:
 
         value.add_(inputs.data)
 
+        # donate[0]=true: delete 
         if donate[0]: inputs.delete()
         if donate[1]: attention_mask.delete()
 

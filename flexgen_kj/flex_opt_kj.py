@@ -200,12 +200,13 @@ class InputEmbed:
     def forward(self, hidden, cache_read_buf, weight_read_buf, attention_mask,
                 cache_write_buf, i, k):
         # Compute input embedding
-        ipdb.set_trace()
+        # ipdb.set_trace()
         
         donate = [False] * 4
         h, donate[0] = hidden.val, True
         mask, donate[1] = attention_mask.val.smart_copy(self.compute)
 
+        print("InputEmbed h:", h.data)
         if k == self.policy.num_gpu_batches - 1:
             # Clear the weight_read_buf if it is the last gpu batch
             (w_token, donate[2]), (w_pos, donate[3]) = weight_read_buf.pop()
@@ -271,7 +272,7 @@ class OutputEmbed:
                 cache_write_buf, i, k):
         donate = [False] * 4
         h, donate[0] = hidden.val, True
-
+        print("OutputEmbed h:", h.data)
         if k == self.policy.num_gpu_batches - 1:
             # Clear the weight_read_buf if it is the last gpu batch
             (w_ln, donate[1]), (b_ln, donate[2]), (w_token, donate[3]) = weight_read_buf.pop()
@@ -453,7 +454,8 @@ class SelfAttention:
         donate = [False] * 14
         # ipdb.set_trace() # hidden.val = None
         h, donate[0] = hidden.val, True
-
+        print("SelfAttention h:", h.data)
+        
         if k == self.policy.num_gpu_batches - 1:
             # Clear the weight_read_buf if it is the last gpu batch
             ((w_q, donate[2]), (b_q, donate[3]), (w_k, donate[4]), (b_k, donate[5]),
@@ -546,7 +548,7 @@ class MLP:
                 cache_write_buf, i, k):
         donate = [False] * 7
         h, donate[0] = hidden.val, True
-
+        print("MLP h:", h.data)
         if k == self.policy.num_gpu_batches - 1:
             # Clear the weight_read_buf if it is the last gpu batch
             ((wi, donate[1]), (bi, donate[2]), (wo, donate[3]), (bo, donate[4]),
@@ -659,8 +661,9 @@ class OptLM:
         self.cache_write_buf = array_2d(num_layers, num_gpu_batches, ValueHolder)
         
         # weight[j]
-        self.weight_read_buf = array_2d(num_layers, num_gpu_batches, ValueHolder)
-        # self.weight_read_buf = array_1d(num_layers, ValueHolder)
+        # self.weight_read_buf = array_2d(num_layers, num_gpu_batches, ValueHolder) 
+        # wrong way
+        self.weight_read_buf = array_1d(num_layers, ValueHolder)
         
         # attention_mask[k]
         self.attention_mask = array_1d(num_gpu_batches, ValueHolder)
@@ -704,7 +707,7 @@ class OptLM:
                 i += 1 
                 if i == self.execute_gen_len:
                     return
-        else: # 3: /. 
+        elif (self.flag_warmup==3): # 3: /. 
             if j == self.num_layers:
                 j = 0
                 i += 1 
@@ -720,7 +723,9 @@ class OptLM:
                 self.layers[j].load_weight(self.weight_home[j][i], self.weight_read_buf[j][i], k)
         else:
             # self.layers[j].load_weight(self.weight_home[j+i*self.num_layers], self.weight_read_buf[j+i*self.num_layers], k)
-            self.layers[j].load_weight(self.weight_home[j], self.weight_read_buf[j][i], k)
+            print("weight_home[j][i]:",j , i)
+            self.layers[j].load_weight(self.weight_home[j][i], self.weight_read_buf[j][i], k)
+        
             
 
     def delete_weight(self, j, k):
@@ -774,7 +779,7 @@ class OptLM:
                 i = i - (self.num_gpu_batches - 1) + 1
                 if i == self.execute_gen_len:
                     return
-        else: # 3: /. 
+        elif (self.flag_warmup==3): # 3: /. 
             if i == 0:  # prefill, no cache
                 return
             if k == self.num_gpu_batches:
@@ -837,7 +842,7 @@ class OptLM:
             if i == self.execute_gen_len:  # last token, no need to store cache
                 # cache_write_buf[j][k].pop()
                 return
-        else: # 3: /. 
+        elif (self.flag_warmup==3): # 3: /. 
             if k == self.execute_gen_len - i - 1:
                 k = self.num_gpu_batches - 1
                 j -= 1
@@ -895,7 +900,7 @@ class OptLM:
                 i = i - (self.num_gpu_batches - 1) + 1
                 if i == self.execute_gen_len:
                     return
-        else: # 3: /. 
+        elif (self.flag_warmup==3): # 3: /. 
             if k == self.num_gpu_batches:
                 k = self.execute_gen_len - i 
                 j += 1
@@ -919,7 +924,11 @@ class OptLM:
                 val = dst.allocate((gpu_batch_size, 1), np.int32)
                 val.load_from_np(self.output_ids[left:right, pos-1:pos])
         else:  # load from the last layer
+            print("pop():", i, j-1, k)
             val = self.hidden[i][j-1][k].pop().move(dst)
+        if i==2 and j==0 and k==0:
+            print("load_hidden",self.hidden[i][j][k])
+        print("store hidden:", i, j, k)
         self.hidden[i][j][k].store(val)
 
     def store_hidden(self, i, j, k):
@@ -955,7 +964,7 @@ class OptLM:
                 i = i - 1
                 # if i == (num_gpu_batches - 1) :
                 #     i = i - 1
-        else: # 3: /. 
+        elif (self.flag_warmup==3): # 3: /. 
             if k == self.execute_gen_len - i - 1:
                 k = self.num_gpu_batches - 1
                 j -= 1
@@ -970,9 +979,14 @@ class OptLM:
         if j == self.num_layers - 1:  # store to output
             gpu_batch_size = self.policy.gpu_batch_size
             left, right = k * gpu_batch_size, (k + 1) * gpu_batch_size
+            
+            if i==2 and j==0 and k==0:
+                print(self.hidden[i][j][k])
+            
             ids = self.hidden[i][j][k].pop().data.detach().cpu().numpy()
             pos = self.task.prompt_len + i
             if self.task.stop:
+                print("###################self.task.stop###############")
                 stopped = self.stopped[left:right]
                 self.output_ids[left:right, pos:pos+1] = np.where(
                     stopped, self.config.pad_token_id, ids)
@@ -990,6 +1004,8 @@ class OptLM:
         # Clear the cache_read_buf
         # Run layer computation
         # ipdb.set_trace() # self.hidden[i][j][k], 
+        if i==2 and j==0 and k==0:
+            print("compute_layer", self.hidden[i][j][k])
         self.layers[j].forward(
             self.hidden[i][j][k], 
             self.cache_read_buf[j][k],
@@ -1058,14 +1074,16 @@ class OptLM:
         self.execute_gen_len = task.cut_gen_len if task.cut_gen_len else task.gen_len
 
         # Output token ids
-        print("# Output token ids");
+        
         self.output_ids = np.full((len(task.inputs), prompt_len + gen_len),
             self.config.pad_token_id, dtype=np.int32)
         self.stopped = np.zeros((len(task.inputs), 1), dtype=bool)
         self.output_ids[:, :prompt_len] = np.asarray(task.inputs)
         assert gpu_batch_size * num_gpu_batches == len(task.inputs)
-
-        # Intermediate tensors
+        print("# Output token ids:", self.output_ids.shape)
+        
+        
+        # Intermediate tensors 
         # The following buffers store values used
         # $$$$$zig-zag
         print("# Intermediate tensors")
@@ -1098,6 +1116,7 @@ class OptLM:
         if self.policy.cpu_cache_compute:
             self.env.cpu.init_attention_compute_workspace(self.config, self.task, self.policy)
 
+        # ipdb.set_trace()
         # Generate
         if debug_mode is None:
             if not overlap:
@@ -1269,6 +1288,7 @@ class OptLM:
         # Generate Total: .//=//.
         print("# $Generate: i[], j[], k[] ", self.execute_gen_len, self.num_layers, self.num_gpu_batches )
 
+        '''
         if (self.execute_gen_len == args.num_gpu_batches-1) : # warm up
             # up ./
             print("# up ./")
@@ -1293,7 +1313,7 @@ class OptLM:
                         self.store_cache(i, j, k-1)
                         self.sync()
                 timers("generate").stop()
-            '''
+            
             for i in range(0, self.num_gpu_batches - 1): # 0-3
                 timers("generate").start()
                 for k in range(0, self.num_gpu_batches - i - 1):
@@ -1315,7 +1335,7 @@ class OptLM:
                         self.store_cache(i, j, k-1)
                         self.sync()
                 timers("generate").stop()
-                '''
+        
         else : # generate
             # parallelogram /=/ 
             print("# parallelogram /=/")
@@ -1359,8 +1379,103 @@ class OptLM:
                         self.store_cache(i, j, k-1)
                         self.sync()
                 #timers("generate").stop()
-            
-            
+        '''
+
+        
+        print("./")
+        # order_uptri()
+        self.flag_warmup = 1
+        for i in range(0, self.num_gpu_batches - 1): # 0-2
+            timers("generate").start()
+            for k in range(0, self.num_gpu_batches - i - 1):
+                self.update_attention_mask(i, k)
+            for j in range(self.num_layers):
+                for k in range(0, self.num_gpu_batches - i - 1): # 0-3
+                    print("i,j,k=",i,j,k)
+                    ipdb.set_trace()
+                    # if (i==1 and j==49 and k==1) or (i==0 and j==49 and k==2): 
+                    #     ipdb.set_trace()
+                    self.load_weight(i, j+1, k)
+                    
+                    self.load_cache(i, j, k+1)
+                    
+                    # if (i==1 and j==49 and k==1) \
+                    #     or (i==2 and j==0 and k==0):  
+                    if (i==0 and j==49 and k==1) \
+                        or (i==1 and j==0 and k==0):  
+                        ipdb.set_trace()
+                    # ipdb.set_trace()
+                    self.store_hidden(i, j, k-1)
+                    
+                    self.load_hidden(i, j, k+1)
+                    
+                    self.compute_layer(i, j, k)
+                    # print("    compute_layer:", i, j, k)
+                    self.store_cache(i, j, k-1)
+                    self.sync()
+            timers("generate").stop()
+        
+        ipdb.set_trace()
+        # elif (flag_warmup == 2):
+        print("/=/")
+        # order_parallelogram()   
+        self.flag_warmup = 2  
+        for i in range(0, self.execute_gen_len-self.num_gpu_batches+1): # 0-46
+            timers("generate").start()
+            for k in range(self.num_gpu_batches-1, -1, -1):
+                self.update_attention_mask(i, k)
+            for j in range(self.num_layers):
+                for k in range(self.num_gpu_batches-1, -1, -1): # 3-0
+                    q = i + self.num_gpu_batches-1 - k # i + 0-3
+                    print("i,j,k=",q,j,k)
+                    
+                    # load_weight(i, j+1, k)
+                    self.load_weight     (q, j+1, k)
+                    
+                    #load_cache(i, j, k+1)
+                    self.load_cache      (q+1, j, k-1)
+
+                    # store_hidden(i, j, k-1)
+                    self.store_hidden    (q-1, j, k+1)
+                    
+                    # load_hidden(i, j, k+1)
+                    self.load_hidden     (q+1, j, k-1)
+                    
+                    self.compute_layer(q, j, k)
+                    # print("    compute_layer:", q, j, k)
+                    
+                    # store_cache(i, j, k-1)
+                    self.store_cache     (q-1, j, k+1)
+                    self.sync()
+            timers("generate").stop()
+        
+        # else:
+        print("/.")
+        # order_downtri()
+        self.flag_warmup = 3
+        for i in range(self.execute_gen_len - self.num_gpu_batches + 1, self.execute_gen_len): # 1-3
+            # timers("generate").start()
+            for k in range(self.execute_gen_len - i, self.num_gpu_batches):
+                self.update_attention_mask(i, k)
+            for j in range(self.num_layers):
+                for k in range(self.execute_gen_len - i, self.num_gpu_batches):
+                    print("i,j,k=",i,j,k)
+                    
+                    self.load_weight(i, j+1, k)
+                    
+                    self.load_cache(i, j, k+1)
+                    
+                    self.store_hidden(i, j, k-1)
+                    
+                    self.load_hidden(i, j, k+1)
+                    
+                    self.compute_layer(i, j, k)
+                    # print("    compute_layer:", i, j, k)
+                    
+                    self.store_cache(i, j, k-1)
+                    self.sync()
+            # timers("generate").stop()
+    
         
         # Epilogue
         self.store_hidden(
@@ -1420,13 +1535,17 @@ class OptLM:
         # for k in range(self.num_gpu_batches):
         for k in range(self.num_gpu_batches):
             self.load_weight(0, 0, k)
+        
+        ipdb.set_trace()
         self.load_hidden(0, 0, 0)
         self.sync()
         
         print("$$$$$zigzag")
         # Generate
         print("# Generate")
+        
         ipdb.set_trace()
+        
         '''
         # if (flag_warmup == 0):
         print("zigzag")                
@@ -1467,18 +1586,23 @@ class OptLM:
             for j in range(self.num_layers):
                 for k in range(0, self.num_gpu_batches - i - 1): # 0-3
                     print("i,j,k=",i,j,k)
-                    #ipdb.set_trace()
-                    if (i==2 and j == 0 and k ==0): 
-                        ipdb.set_trace()
+                    ipdb.set_trace()
+                    # if (i==1 and j==49 and k==1) or (i==0 and j==49 and k==2): 
+                    #     ipdb.set_trace()
                     self.load_weight(i, j+1, k)
                     
                     self.load_cache(i, j, k+1)
-
-                    self.store_hidden(i, j, k-1)
-                    if (i==2 and j==0 and k ==0): 
+                    
+                    # if (i==1 and j==49 and k==1) \
+                    #     or (i==2 and j==0 and k==0):  
+                    if (i==0 and j==49 and k==1) \
+                        or (i==1 and j==0 and k==0):  
                         ipdb.set_trace()
-                    self.load_hidden(i, j, k+1)
                     # ipdb.set_trace()
+                    self.store_hidden(i, j, k-1)
+                    
+                    self.load_hidden(i, j, k+1)
+                    
                     self.compute_layer(i, j, k)
                     # print("    compute_layer:", i, j, k)
                     self.store_cache(i, j, k-1)
