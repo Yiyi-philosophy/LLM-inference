@@ -639,8 +639,7 @@ class OptLM:
         self.task = None
         self.init_all_weights()
         if policy.search_order == "diagonal":
-            self.sidx = [0 for _ in range(self.gsize)]
-            
+            self.sidx = [0 for _ in range(self.gsize)]          
 
     def set_task(self, task):
         self.task = task
@@ -696,8 +695,8 @@ class OptLM:
         if j == self.num_layers:
             j = 0
             i += 1
-            if i == self.execute_gen_len:
-                return
+        if i == self.execute_gen_len:
+            return
 
         # Load from cache_home to cache_read_buf
         if overlap:
@@ -836,7 +835,7 @@ class OptLM:
         val.load_from_np((input_ids != self.config.pad_token_id))
         self.attention_mask[k].store(val)
 
-    def next_idx(self, i, j, k, s, loaded=[False,0], typ="line"):
+    def next_idx(self, i, j, k, s, typ="line"):
         if typ == "line":
             k += 1
             if k >= s:
@@ -856,7 +855,6 @@ class OptLM:
                         self.sidx[_] += 1
                         if self.sidx[_] == self.execute_gen_len:
                             s += 1
-                            loaded[1] += 1
                     j = 0
                 k = s
             if k<self.gsize:
@@ -903,8 +901,10 @@ class OptLM:
         num_layers, num_gpu_batches = self.num_layers, self.policy.num_gpu_batches
 
         if self.policy.search_order=="diagonal":
-            for k in range(self.gsize):
-                self.sidx[k] = int((self.execute_gen_len-1)*(self.gsize-k-1)/(self.gsize-1))
+            ll = self.execute_gen_len-1
+            for k in range(self.gsize-1):
+                self.sidx[k] = ll
+                ll = self.sidx[k]-int(ll/(self.gsize-k-1))
         for j in range(num_layers):
             for k in range(num_gpu_batches):
                 self.cache_home[j][k].clear()
@@ -1161,39 +1161,47 @@ class OptLM:
             timers("generate").stop()
 
         # Generate /.
-        loaded = [True,1]
-        k_fix = 0
+        loaded = [True]
+        k_fix, newly = 0, 0
         while s<self.gsize:
             timers("generate").start()
+            if newly==1:
+                newly = 0
+            if pi == self.execute_gen_len-1:
+                k_fix += 1
+                newly = 1
             for k in range(s, self.gsize):
                 self.update_attention_mask(self.sidx[k], k*2)
                 self.update_attention_mask(self.sidx[k], k*2+1)
             for j in range(self.num_layers):
                 loaded[0] = True 
                 while True:
-                    if pi==self.execute_gen_len-1 and k_fix<=s:
-                        k_fix += 1
                     self.load_weight(pi, pj+1, pk*2, loaded=loaded)
-                    self.load_cache(pi, pj, pk*2+1, k_fix=k_fix)
+                    self.load_cache(pi, pj, pk*2+1, k_fix=(k_fix-newly)*2)
                     self.store_hidden(li, lj, lk*2+1)
                     self.load_hidden(pi, pj, pk*2+1)
                     self.compute_layer(pi, pj, pk*2)
-                    self.store_cache(li, lj, lk*2+1, k_fix=k_fix)
+                    if pj==0 and pk==s:
+                        self.store_cache(li, lj, lk*2+1, k_fix=(k_fix-newly)*2)
+                    else:
+                        self.store_cache(li, lj, lk*2+1, k_fix=k_fix*2)
                     self.sync()
                     
                     self.load_weight(pi, pj+1, pk*2+1)
-                    self.load_cache(ni, nj, nk*2, k_fix=k_fix)
+                    if pj==self.num_layers-1 and pk==self.gsize-1:
+                        self.load_cache(ni, nj, nk*2, k_fix=k_fix*2)
+                    else:
+                        self.load_cache(ni, nj, nk*2, k_fix=(k_fix-newly)*2)
                     self.store_hidden(pi, pj, pk*2)
                     self.load_hidden(ni, nj, nk*2)
                     self.compute_layer(pi, pj, pk*2+1, pj!=nj)
-                    self.store_cache(pi, pj, pk*2, k_fix=k_fix)
+                    self.store_cache(pi, pj, pk*2, k_fix=k_fix*2)
                     self.sync()
                     li, lj, lk = pi, pj, pk
                     pi, pj, pk = ni, nj, nk
-                    ni, nj, nk, s = self.next_idx(ni,nj,nk,s,typ="diagonal",loaded=loaded)
+                    ni, nj, nk, s = self.next_idx(ni,nj,nk,s,typ="diagonal")
                     if pj!=lj:
                         break
-                loaded[1]=0
             timers("generate").stop()
 
         # Epilogue
