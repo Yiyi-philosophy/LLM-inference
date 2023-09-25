@@ -923,7 +923,7 @@ class OptLM:
                 if self.policy.search_order=="diagonal":
                     self.init_cache(j, k, self.sidx[int(k/2)]+1)
                 else:
-                    self.init_cache(j, k, prompt_len)
+                    self.init_cache(j, k, gen_len)
         if self.policy.cpu_cache_compute:
             self.env.cpu.init_attention_compute_workspace(self.config, self.task, self.policy)
 
