@@ -1468,7 +1468,6 @@ def add_parser_arguments(parser):
         const=True, default=True)
     parser.add_argument("--search-order", type=str, default="diagonal")
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     add_parser_arguments(parser)
